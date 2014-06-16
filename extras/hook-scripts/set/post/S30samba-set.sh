@@ -75,7 +75,7 @@ function add_samba_share () {
         volname=$1
         STRING="\n[gluster-$volname]\n"
         STRING+="comment = For samba share of volume $volname\n"
-        STRING+="vfs objects = glusterfs\n"
+        STRING+="vfs objects = acl_xattr glusterfs\n"
         STRING+="glusterfs:volume = $volname\n"
         STRING+="glusterfs:logfile = $LOGFILEBASE/glusterfs-$volname.%%M.log\n"
         STRING+="glusterfs:loglevel = 7\n"
