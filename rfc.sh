@@ -1,8 +1,10 @@
 #!/bin/sh -e
-
+# Since we run with '#!/bin/sh -e'
+#   '$? != 0' will force an exit,
+# i.e. where we are interested in the result of a command,
+# we have to run the command in an if-statement.
 
 branch="master";
-
 
 set_hooks_commit_msg()
 {
@@ -34,8 +36,6 @@ is_num()
 
 rebase_changes()
 {
-    git fetch origin;
-
     GIT_EDITOR=$0 git rebase -i origin/$branch;
 }
 
@@ -82,6 +82,31 @@ assert_diverge()
     git diff origin/$branch..HEAD | grep -q .;
 }
 
+check_patches_for_coding_style()
+{
+    git fetch origin;
+
+    check_patch_script=./extras/checkpatch.pl
+    if [ ! -e ./extras/checkpatch.pl ] ; then
+        echo "checkpatch is not executable .. abort"
+        exit 1
+    fi
+
+    # checkpatch.pl checks for everything, but make sure
+    # to exit for whitespaces earlier- PEDANTIC!
+    echo "Running whitespace check ..."
+    ## take diff from origin/master..$(git rev-parse --abbrev-ref HEAD)
+    if ! git --no-pager diff --name-only origin/master.. |
+        grep -v [a-zA-Z0-9].md |
+        xargs git --no-pager diff --check origin/$branch..; then
+        echo -n "Found whitespaces .. exiting"
+        echo
+        exit 1
+    fi
+
+    echo "Running coding guidelines check ..."
+    git format-patch --stdout origin/$branch.. | ${check_patch_script} --terse -
+}
 
 main()
 {
@@ -91,6 +116,8 @@ main()
         editor_mode "$@";
         return;
     fi
+
+    check_patches_for_coding_style;
 
     rebase_changes;
 
