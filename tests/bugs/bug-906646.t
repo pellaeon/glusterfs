@@ -11,10 +11,11 @@ TEST glusterd
 TEST pidof glusterd
 
 TEST $CLI volume create $V0 replica $REPLICA $H0:$B0/${V0}-00 $H0:$B0/${V0}-01 $H0:$B0/${V0}-10 $H0:$B0/${V0}-11
-TEST $CLI volume start $V0
-
+TEST $CLI volume set $V0 cluster.quorum-type none
 TEST $CLI volume set $V0 cluster.self-heal-daemon off
 TEST $CLI volume set $V0 cluster.background-self-heal-count 0
+
+TEST $CLI volume start $V0
 
 ## Mount FUSE with caching disabled
 TEST glusterfs --entry-timeout=0 --attribute-timeout=0 -s $H0 --volfile-id $V0 $M0;

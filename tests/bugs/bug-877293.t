@@ -10,6 +10,7 @@ TEST pidof glusterd
 mkdir -p ${B0}/${V0}-0
 mkdir -p ${B0}/${V0}-1
 TEST $CLI volume create $V0 replica 2 $H0:$B0/${V0}-{0,1}
+TEST $CLI volume set $V0 cluster.quorum-type none
 
 TEST $CLI volume set $V0 indexing on
 

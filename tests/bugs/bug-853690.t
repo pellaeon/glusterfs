@@ -54,6 +54,7 @@ end-volume
 volume test-replicate-0
     type cluster/replicate
     option background-self-heal-count 0
+    option quorum-type none
     subvolumes test-locks-0 test-locks-1
 end-volume
 EOF
@@ -88,4 +89,3 @@ rm -f $B0/test.vol
 rm -rf $B0/test1 $B0/test2
 
 cleanup;
-

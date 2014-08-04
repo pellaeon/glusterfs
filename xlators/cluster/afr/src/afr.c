@@ -82,17 +82,16 @@ xlator_subvolume_index (xlator_t *this, xlator_t *subvol)
 }
 
 void
-fix_quorum_options (xlator_t *this, afr_private_t *priv, char *qtype)
+fix_quorum_options (xlator_t *this, afr_private_t *priv, char *quorum_type)
 {
-        if (priv->quorum_count && strcmp(qtype,"fixed")) {
+        if (priv->quorum_count && strcmp(quorum_type, "fixed")) {
                 gf_msg (this->name,GF_LOG_WARNING, 0, AFR_MSG_QUORUM_OVERRIDE,
-                       "quorum-type %s overriding quorum-count %u",
-                       qtype, priv->quorum_count);
+                        "quorum-type %s overriding quorum-count %u",
+                        quorum_type, priv->quorum_count);
         }
-        if (!strcmp(qtype,"none")) {
+        if (!strcmp(quorum_type, "none")) {
                 priv->quorum_count = 0;
-        }
-        else if (!strcmp(qtype,"auto")) {
+        } else if (!strcmp(quorum_type, "auto")) {
                 priv->quorum_count = AFR_QUORUM_AUTO;
         }
 }
@@ -100,12 +99,12 @@ fix_quorum_options (xlator_t *this, afr_private_t *priv, char *qtype)
 int
 reconfigure (xlator_t *this, dict_t *options)
 {
-        afr_private_t *priv        = NULL;
-        xlator_t      *read_subvol = NULL;
+        afr_private_t *priv              = NULL;
+        xlator_t      *read_subvol       = NULL;
         int            read_subvol_index = -1;
-        int            ret         = -1;
-        int            index       = -1;
-        char          *qtype       = NULL;
+        int            ret               = -1;
+        int            index             = -1;
+        char          *quorum_type       = NULL;
 
         priv = this->private;
 
@@ -176,10 +175,10 @@ reconfigure (xlator_t *this, dict_t *options)
         GF_OPTION_RECONF ("pre-op-compat", priv->pre_op_compat, options, bool, out);
 
         GF_OPTION_RECONF ("eager-lock", priv->eager_lock, options, bool, out);
-        GF_OPTION_RECONF ("quorum-type", qtype, options, str, out);
+        GF_OPTION_RECONF ("quorum-type", quorum_type, options, str, out);
         GF_OPTION_RECONF ("quorum-count", priv->quorum_count, options,
                           uint32, out);
-        fix_quorum_options(this,priv,qtype);
+        fix_quorum_options(this, priv, quorum_type);
         if (priv->quorum_count && !afr_has_quorum (priv->child_up, this))
                 gf_msg (this->name, GF_LOG_WARNING, 0, AFR_MSG_QUORUM_FAIL,
                         "Client-quorum is not met");
@@ -221,16 +220,16 @@ static const char *favorite_child_warning_str = "You have specified subvolume '%
 int32_t
 init (xlator_t *this)
 {
-        afr_private_t *priv        = NULL;
-        int            child_count = 0;
-        xlator_list_t *trav        = NULL;
-        int            i           = 0;
-        int            ret         = -1;
-        GF_UNUSED int  op_errno    = 0;
-        xlator_t      *read_subvol = NULL;
+        afr_private_t *priv              = NULL;
+        int            child_count       = 0;
+        xlator_list_t *trav              = NULL;
+        int            i                 = 0;
+        int            ret               = -1;
+        GF_UNUSED int  op_errno          = 0;
+        xlator_t      *read_subvol       = NULL;
         int            read_subvol_index = -1;
-        xlator_t      *fav_child   = NULL;
-        char          *qtype       = NULL;
+        xlator_t      *fav_child         = NULL;
+        char          *quorum_type       = NULL;
 
         if (!this->children) {
                 gf_log (this->name, GF_LOG_ERROR,
@@ -333,11 +332,11 @@ init (xlator_t *this)
         GF_OPTION_INIT ("pre-op-compat", priv->pre_op_compat, bool, out);
 
         GF_OPTION_INIT ("eager-lock", priv->eager_lock, bool, out);
-        GF_OPTION_INIT ("quorum-type", qtype, str, out);
+        GF_OPTION_INIT ("quorum-type", quorum_type, str, out);
         GF_OPTION_INIT ("quorum-count", priv->quorum_count, uint32, out);
         GF_OPTION_INIT (AFR_SH_READDIR_SIZE_KEY, priv->sh_readdir_size, size_uint64,
                         out);
-        fix_quorum_options(this,priv,qtype);
+        fix_quorum_options(this, priv, quorum_type);
 
 	GF_OPTION_INIT ("post-op-delay-secs", priv->post_op_delay_secs, uint32, out);
         GF_OPTION_INIT ("ensure-durability", priv->ensure_durability, bool,
@@ -696,7 +695,7 @@ struct volume_options options[] = {
         { .key = {"quorum-type"},
           .type = GF_OPTION_TYPE_STR,
           .value = { "none", "auto", "fixed"},
-          .default_value = "none",
+          .default_value = "auto",
           .description = "If value is \"fixed\" only allow writes if "
                          "quorum-count bricks are present.  If value is "
                          "\"auto\" only allow writes if more than half of "

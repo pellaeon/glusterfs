@@ -24,6 +24,7 @@ TEST $CLI volume set $V0 cluster.self-heal-daemon off
 TEST $CLI volume set $V0 performance.stat-prefetch off
 TEST $CLI volume set $V0 client-log-level DEBUG
 TEST $CLI volume set $V0 cluster.background-self-heal-count 0
+TEST $CLI volume set $V0 cluster.quorum-type none
 TEST $CLI volume start $V0
 TEST glusterfs --entry-timeout=0 --attribute-timeout=0 -s $H0 --volfile-id=$V0 $M0;
 
@@ -65,5 +66,5 @@ TEST $CLI volume set $V0 cluster.quorum-type none
 EXPECT none volume_option $V0 cluster.quorum-type
 TEST test_write
 TEST $CLI volume reset $V0 cluster.quorum-type
-TEST test_write
+TEST ! test_write
 cleanup;

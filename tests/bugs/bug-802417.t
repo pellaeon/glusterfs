@@ -19,10 +19,7 @@ mkdir -p ${B0}/${V0}-0
 mkdir -p ${B0}/${V0}-1
 mkdir -p ${B0}/${V0}-2
 TEST $CLI volume create $V0 replica 3 $H0:$B0/${V0}-{0,1,2}
-
-## Verify volume is created
-EXPECT "$V0" volinfo_field $V0 'Volume Name';
-EXPECT 'Created' volinfo_field $V0 'Status';
+TEST $CLI volume set $V0 cluster.quorum-type none
 
 ## Make sure io-cache and write-behind don't interfere.
 TEST $CLI volume set $V0 performance.io-cache off;
@@ -33,6 +30,10 @@ TEST $CLI volume set $V0 performance.stat-prefetch off
 TEST $CLI volume set $V0 cluster.self-heal-daemon off
 TEST $CLI volume set $V0 cluster.data-self-heal on
 TEST $CLI volume set $V0 cluster.background-self-heal-count 0
+
+## Verify volume is created
+EXPECT "$V0" volinfo_field $V0 'Volume Name';
+EXPECT 'Created' volinfo_field $V0 'Status';
 
 ## Start volume and verify
 TEST $CLI volume start $V0;

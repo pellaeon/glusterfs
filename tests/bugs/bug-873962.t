@@ -12,6 +12,7 @@ TEST $CLI volume info;
 
 B0_hiphenated=`echo $B0 | tr '/' '-'`
 TEST $CLI volume create $V0 replica 2 $H0:$B0/${V0}{1,2}
+TEST $CLI volume set $V0 cluster.quorum-type none
 
 # If we allow self-heal to happen in the background, we'll get spurious
 # failures - especially at the point labeled "FAIL HERE" but

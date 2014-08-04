@@ -11,7 +11,7 @@ cleanup;
 TEST glusterd
 TEST pidof glusterd
 TEST $CLI volume create $V0 replica 2 $H0:$B0/${V0}{0,1}
-TEST $CLI volume start $V0
+TEST $CLI volume set $V0 cluster.quorum-type none
 #Lets disable perf-xls so that lookup would reach afr
 TEST $CLI volume set $V0 performance.quick-read off
 TEST $CLI volume set $V0 performance.io-cache off
@@ -20,6 +20,8 @@ TEST $CLI volume set $V0 performance.stat-prefetch off
 TEST $CLI volume set $V0 performance.read-ahead off
 TEST $CLI volume set $V0 background-self-heal-count 0
 TEST $CLI volume set $V0 self-heal-daemon off
+
+TEST $CLI volume start $V0
 TEST $CLI volume quota $V0 enable
 
 TEST kill_brick $V0 $H0 $B0/${V0}0

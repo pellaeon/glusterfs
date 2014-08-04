@@ -15,7 +15,9 @@ TEST $CLI volume info;
 TEST $CLI volume create $V0 replica 2 $H0:$B0/${V0}{1,2};
 TEST $CLI volume set $V0 linux-aio on
 TEST $CLI volume set $V0 background-self-heal-count 0
-TEST $CLI volume set $V0 performance.stat-prefetch off;
+TEST $CLI volume set $V0 stat-prefetch off
+TEST $CLI volume set $V0 cluster.quorum-type none
+
 TEST $CLI volume start $V0
 
 ## Mount FUSE with caching disabled

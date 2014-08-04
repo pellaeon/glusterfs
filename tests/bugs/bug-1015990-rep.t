@@ -11,6 +11,7 @@ TEST pidof glusterd;
 TEST $CLI volume info;
 
 TEST $CLI volume create $V0 replica 2 $H0:$B0/${V0}{1,2,3,4};
+TEST $CLI volume set $V0 cluster.quorum-type none
 
 ## Verify volume is is created
 EXPECT "$V0" volinfo_field $V0 'Volume Name';

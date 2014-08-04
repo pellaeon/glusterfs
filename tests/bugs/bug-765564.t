@@ -12,6 +12,7 @@ TEST pidof glusterd
 mkdir -p ${B0}/${V0}-0
 mkdir -p ${B0}/${V0}-1
 TEST $CLI volume create $V0 replica 2 $H0:$B0/${V0}-{0,1}
+TEST $CLI volume set $V0 cluster.quorum-type none
 
 TEST $CLI volume set $V0 performance.io-cache off;
 TEST $CLI volume set $V0 performance.write-behind off;
@@ -82,4 +83,3 @@ find $M0 | xargs stat 2>/dev/null 1>/dev/null;
 TEST rm_mv_correctness;
 EXPECT_WITHIN $UMOUNT_TIMEOUT "Y" force_umount $M0
 cleanup;
-

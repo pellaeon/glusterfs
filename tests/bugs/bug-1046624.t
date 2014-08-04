@@ -19,6 +19,7 @@ EXPECT 'Created' volinfo_field $V0 'Status';
 TEST $CLI volume set $V0 cluster.self-heal-daemon off
 TEST $CLI volume set $V0 stat-prefetch off
 TEST $CLI volume set $V0 background-self-heal-count 0
+TEST $CLI volume set $V0 cluster.quorum-type none
 
 ## Start volume and verify
 TEST $CLI volume start $V0;
