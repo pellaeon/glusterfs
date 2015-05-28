@@ -84,7 +84,7 @@ changelog_thread_cleanup (xlator_t *this, pthread_t thr_id)
         return ret;
 }
 
-inline void *
+extern inline void *
 changelog_get_usable_buffer (changelog_local_t *local)
 {
         changelog_log_data_t *cld = NULL;
@@ -105,7 +105,7 @@ changelog_selector_index (unsigned int selector)
         return (ffs (selector) - 1);
 }
 
-inline int
+extern inline int
 changelog_ev_selected (xlator_t *this,
                        changelog_ev_selector_t *selection,
                        unsigned int selector)
@@ -121,7 +121,7 @@ changelog_ev_selected (xlator_t *this,
                  && (selection->ref[idx] > 0));
 }
 
-inline void
+extern inline void
 changelog_select_event (xlator_t *this,
                         changelog_ev_selector_t *selection,
                         unsigned int selector)
@@ -143,7 +143,7 @@ changelog_select_event (xlator_t *this,
         UNLOCK (&selection->reflock);
 }
 
-inline void
+extern inline void
 changelog_deselect_event (xlator_t *this,
                           changelog_ev_selector_t *selection,
                           unsigned int selector)
@@ -165,7 +165,7 @@ changelog_deselect_event (xlator_t *this,
         UNLOCK (&selection->reflock);
 }
 
-inline int
+extern inline int
 changelog_init_event_selection (xlator_t *this,
                                 changelog_ev_selector_t *selection)
 {
@@ -187,7 +187,7 @@ changelog_init_event_selection (xlator_t *this,
         return 0;
 }
 
-inline int
+extern inline int
 changelog_cleanup_event_selection (xlator_t *this,
                                    changelog_ev_selector_t *selection)
 {
@@ -226,7 +226,7 @@ changelog_perform_dispatch (xlator_t *this,
         rbuf_write_complete (opaque);
 }
 
-inline void
+extern inline void
 changelog_dispatch_event (xlator_t *this,
                           changelog_priv_t *priv, changelog_event_t *ev)
 {
@@ -238,7 +238,7 @@ changelog_dispatch_event (xlator_t *this,
         }
 }
 
-inline void
+extern inline void
 changelog_set_usable_record_and_length (changelog_local_t *local,
                                         size_t len, int xr)
 {
@@ -278,7 +278,7 @@ changelog_local_cleanup (xlator_t *xl, changelog_local_t *local)
         mem_put (local);
 }
 
-inline int
+extern inline int
 changelog_write (int fd, char *buffer, size_t len)
 {
         ssize_t size = 0;
@@ -927,7 +927,7 @@ changelog_start_next_change (xlator_t *this,
 /**
  * return the length of entry
  */
-inline size_t
+extern inline size_t
 changelog_entry_length ()
 {
         return sizeof (changelog_log_data_t);
@@ -1015,7 +1015,7 @@ out:
         return ret;
 }
 
-inline int
+extern inline int
 changelog_handle_change (xlator_t *this,
                          changelog_priv_t *priv, changelog_log_data_t *cld)
 {
@@ -1557,7 +1557,7 @@ changelog_inode_ctx_get (xlator_t *this,
  * then there is no need to record an update (as the equality of the two version
  * signifies an update was recorded in the current time slice).
  */
-inline void
+extern inline void
 changelog_update (xlator_t *this, changelog_priv_t *priv,
                   changelog_local_t *local, changelog_log_type type)
 {
@@ -1625,7 +1625,7 @@ changelog_update (xlator_t *this, changelog_priv_t *priv,
  * not incremented fop count but color is assigned black.
  */
 
-inline void
+extern inline void
 changelog_color_fop_and_inc_cnt (xlator_t *this, changelog_priv_t *priv,
                                                  changelog_local_t *local)
 {
@@ -1641,7 +1641,7 @@ changelog_color_fop_and_inc_cnt (xlator_t *this, changelog_priv_t *priv,
 }
 
 /* Increments the respective fop counter based on the fop color */
-inline void
+extern inline void
 changelog_inc_fop_cnt (xlator_t *this, changelog_priv_t *priv,
                                        changelog_local_t *local)
 {
@@ -1671,7 +1671,7 @@ changelog_inc_fop_cnt (xlator_t *this, changelog_priv_t *priv,
 }
 
 /* Decrements the respective fop counter based on the fop color */
-inline void
+extern inline void
 changelog_dec_fop_cnt (xlator_t *this, changelog_priv_t *priv,
                                        changelog_local_t *local)
 {
@@ -1721,7 +1721,7 @@ changelog_dec_fop_cnt (xlator_t *this, changelog_priv_t *priv,
 /* Write to a pipe setup between changelog main thread and changelog
  * rollover thread to initiate explicit rollover of changelog journal.
  */
-inline int
+extern inline int
 changelog_barrier_notify (changelog_priv_t *priv, char *buf)
 {
         int ret = 0;
@@ -1733,7 +1733,7 @@ changelog_barrier_notify (changelog_priv_t *priv, char *buf)
 }
 
 /* Clean up flags set on barrier notification */
-inline void
+extern inline void
 changelog_barrier_cleanup (xlator_t *this, changelog_priv_t *priv,
                                                 struct list_head *queue)
 {
