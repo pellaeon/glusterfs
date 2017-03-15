@@ -430,6 +430,15 @@ sys_llistxattr (const char *path, char *list, size_t size)
 #endif
 
 #ifdef GF_BSD_HOST_OS
+		char *bsd_list = GF_MALLOC(size, gf_common_mt_char);
+		int i=0;
+		while ( i<size ) {
+			size_t attribute_len = bsd_list[i];
+			i = stpncpy(list+i, bsd_list[i+1], attribute_len+1);
+			i++;
+			gf_msg_debug("syscall", 0, "syscall debug: %d", attribute_len);
+		}
+		GF_FREE(bsd_list);
         return extattr_list_link (path, EXTATTR_NAMESPACE_USER, list, size);
 #endif
 
