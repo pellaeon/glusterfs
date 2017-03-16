@@ -435,7 +435,8 @@ sys_llistxattr (const char *path, char *list, size_t size)
         ssize_t ret = extattr_list_link (path, EXTATTR_NAMESPACE_USER, bsd_list, size);
 		while ( i<size ) {
 			size_t attribute_len = bsd_list[i];
-			stpncpy(list+i, &bsd_list[i+1], attribute_len+1);
+			char *attr_ending_plus1 = stpncpy(list+i, &bsd_list[i+1], attribute_len);
+			*attr_ending_plus1 = '\0';
 			i += attribute_len+1;
 			gf_msg_debug("syscall", 0, "syscall debug: %d", attribute_len);
 		}
