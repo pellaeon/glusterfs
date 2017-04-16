@@ -537,17 +537,17 @@ out:
 
 #ifdef GF_BSD_HOST_OS
 void
-extattr_list_reshape(char *list, ssize_t size)
+extattr_list_reshape(char *bsd_list, ssize_t size)
 {
-    if (NULL == list || size < 0)
+    if (NULL == bsd_list || size < 0)
         return;
 
-    char *bsd_list = GF_MALLOC(size, gf_common_mt_char);
+    char *linux_list = GF_MALLOC(size, gf_common_mt_char);
     int i = 0;
 
     while ( i < size ) {
         size_t attr_len = bsd_list[i];
-        char *attr = stpncpy(list + i, bsd_list + i + 1, attr_len);
+        char *attr = stpncpy(linux_list + i, bsd_list + i + 1, attr_len);
         /*
          * the length of bsd_list is same as `size`
          * the format of bsd_list is
@@ -560,7 +560,9 @@ extattr_list_reshape(char *list, ssize_t size)
         i += attr_len + 1;
         gf_msg_debug("syscall", 0, "syscall debug: %d", attr_len);
     }
-    GF_FREE(bsd_list);
+    // write back the new constructed list
+    memcpy(bsd_list, linux_list, size);
+    GF_FREE(linux_list);
 }
 #endif /* GF_BSD_HOST_OS */
 
