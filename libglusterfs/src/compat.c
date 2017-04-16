@@ -539,7 +539,7 @@ out:
 void
 extattr_list_reshape(char *bsd_list, ssize_t size)
 {
-    if (NULL == bsd_list || size < 0)
+    if (NULL == bsd_list || size <= 0)
         return;
 
     char *linux_list = GF_MALLOC(size, gf_common_mt_char);
