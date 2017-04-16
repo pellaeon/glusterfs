@@ -535,6 +535,35 @@ out:
 
 #endif /* GF_SOLARIS_HOST_OS */
 
+#ifdef GF_BSD_HOST_OS
+void
+extattr_list_reshape(char *list, ssize_t size)
+{
+    if (NULL == list || size < 0)
+        return;
+
+    char *bsd_list = GF_MALLOC(size, gf_common_mt_char);
+    int i = 0;
+
+    while ( i < size ) {
+        size_t attr_len = bsd_list[i];
+        char *attr = stpncpy(list + i, bsd_list + i + 1, attr_len);
+        /*
+         * the length of bsd_list is same as `size`
+         * the format of bsd_list is
+         *     <attr_len>attr<attr_len>attr...
+         * we try to reformat it as Linux's
+         *     attr<\0>attr<\0>...
+         * so the attr+attr_len won't point to an invalid memory position
+         * */
+        *(attr + attr_len) = '\0';
+        i += attr_len + 1;
+        gf_msg_debug("syscall", 0, "syscall debug: %d", attr_len);
+    }
+    GF_FREE(bsd_list);
+}
+#endif /* GF_BSD_HOST_OS */
+
 #ifndef HAVE_STRNLEN
 size_t
 strnlen(const char *string, size_t maxlen)

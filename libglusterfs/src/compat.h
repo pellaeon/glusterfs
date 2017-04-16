@@ -177,6 +177,9 @@ enum {
 #ifndef _PATH_UMOUNT
   #define _PATH_UMOUNT "/sbin/umount"
 #endif
+
+void extattr_list_reshape(char *list, ssize_t size);
+
 #endif /* GF_BSD_HOST_OS */
 
 #ifdef GF_DARWIN_HOST_OS

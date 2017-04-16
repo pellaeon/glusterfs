@@ -430,17 +430,9 @@ sys_llistxattr (const char *path, char *list, size_t size)
 #endif
 
 #ifdef GF_BSD_HOST_OS
-        char *bsd_list = GF_MALLOC(size, gf_common_mt_char);
-        int i=0;
-        ssize_t ret = extattr_list_link (path, EXTATTR_NAMESPACE_USER, bsd_list, size);
-        while ( i<size ) {
-            size_t attribute_len = bsd_list[i];
-            char *attr = stpncpy(list+i, &bsd_list[i+1], attribute_len);
-            i += attribute_len+1;
-            *(attr + attribute_len) = '\0';
-            gf_msg_debug("syscall", 0, "syscall debug: %d", attribute_len);
-        }
-        GF_FREE(bsd_list);
+        ssize_t ret = extattr_list_link (path, EXTATTR_NAMESPACE_USER,
+                                         list, size);
+        extattr_list_reshape (list, ret);
         return ret;
 #endif
 
@@ -557,7 +549,10 @@ sys_flistxattr (int filedes, char *list, size_t size)
 #endif
 
 #ifdef GF_BSD_HOST_OS
-        return extattr_list_fd (filedes, EXTATTR_NAMESPACE_USER, list, size);
+        ssize_t ret = extattr_list_fd (filedes, EXTATTR_NAMESPACE_USER,
+                                       list, size);
+        extattr_list_reshape (list, ret);
+        return ret;
 #endif
 
 #ifdef GF_SOLARIS_HOST_OS
