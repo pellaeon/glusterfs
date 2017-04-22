@@ -556,7 +556,7 @@ extattr_list_reshape(char *bsd_list, ssize_t size)
          *     attr<\0>attr<\0>...
          * so the attr+attr_len won't point to an invalid memory position
          * */
-        *(linux_list + i + attr_len + 1) = '\0';
+        *(linux_list + i + attr_len + 1) = 'a';
         i += attr_len + 1;
         gf_msg_debug("syscall", 0, "syscall debug: %d", attr_len);
     }
