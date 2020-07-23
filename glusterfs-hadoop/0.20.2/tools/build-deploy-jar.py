@@ -93,14 +93,14 @@ def rcopy(f, host, libdir):
 
     os.system(scpCmd);
 
-def deployInSlave(f, confdir, libdir, cc, cm, he):
-    slavefile = confdir + "slaves"
+def deployInSubordinate(f, confdir, libdir, cc, cm, he):
+    subordinatefile = confdir + "subordinates"
 
     ccFile = confdir + "core-site.xml"
     cmFile = confdir + "mapred-site.xml"
     heFile = confdir + "hadoop-env.sh"
 
-    sf = open(slavefile, 'r')
+    sf = open(subordinatefile, 'r')
     for host in sf:
         host = host.rstrip('\n')
         print "  >>> Deploying %s on %s ..." % (os.path.basename(f), host)
@@ -122,11 +122,11 @@ def deployInSlave(f, confdir, libdir, cc, cm, he):
 
     sf.close()
 
-def deployInMaster(f, confdir, libdir):
+def deployInMain(f, confdir, libdir):
     import socket
-    masterfile = confdir + "masters"
+    mainfile = confdir + "mains"
 
-    mf = open(masterfile, 'r')
+    mf = open(mainfile, 'r')
     for host in mf:
         host = host.rstrip('\n')
         print "  >>> Deploying %s on %s ..." % (os.path.basename(f), host)
@@ -195,7 +195,7 @@ if __name__ == '__main__':
     print ""
     print "*** Deploying %s *** " % (jar)
 
-    # copy jar to local hadoop distribution (master)
+    # copy jar to local hadoop distribution (main)
     hadoop_home = addSlash(hadoop_dir)
     if not (os.path.exists(hadoop_home) and os.path.isdir(hadoop_home)):
         print "path " + hadoop_home + " does not exist or is not adiretory";
@@ -204,9 +204,9 @@ if __name__ == '__main__':
     hadoop_conf = hadoop_home + "conf/"
     hadoop_lib = hadoop_home + "lib/"
 
-    print " >>> Scanning hadoop master file for host(s) to deploy"
-    deployInMaster(jar, hadoop_conf, hadoop_lib)
+    print " >>> Scanning hadoop main file for host(s) to deploy"
+    deployInMain(jar, hadoop_conf, hadoop_lib)
 
     print ""
-    print " >>> Scanning hadoop slave file for host(s) to deploy"
-    deployInSlave(jar, hadoop_conf, hadoop_lib, copyCore, copyMapred, copyHadoopEnv)
+    print " >>> Scanning hadoop subordinate file for host(s) to deploy"
+    deployInSubordinate(jar, hadoop_conf, hadoop_lib, copyCore, copyMapred, copyHadoopEnv)

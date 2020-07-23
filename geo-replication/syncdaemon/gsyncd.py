@@ -179,8 +179,8 @@ def main_i():
     - start service in following modes, in given stages:
       - agent: startup(), ChangelogAgent()
       - monitor: startup(), monitor()
-      - master: startup(), connect_remote(), connect(), service_loop()
-      - slave: startup(), connect(), service_loop()
+      - main: startup(), connect_remote(), connect(), service_loop()
+      - subordinate: startup(), connect(), service_loop()
     """
     rconf = {'go_daemon': 'should'}
 
@@ -200,7 +200,7 @@ def main_i():
             o, oo, FreeObject(op=op, **dmake(vx)), p)
 
     op = OptionParser(
-        usage="%prog [options...] <master> <slave>", version="%prog 0.0.1")
+        usage="%prog [options...] <main> <subordinate>", version="%prog 0.0.1")
     op.add_option('--gluster-command-dir', metavar='DIR', default='')
     op.add_option('--gluster-log-file', metavar='LOGF',
                   default=os.devnull, type=str, action='callback',
@@ -230,7 +230,7 @@ def main_i():
     op.add_option('--georep-session-working-dir', metavar='STATF',
                   type=str, action='callback', callback=store_abs)
     op.add_option('--ignore-deletes', default=False, action='store_true')
-    op.add_option('--isolated-slave', default=False, action='store_true')
+    op.add_option('--isolated-subordinate', default=False, action='store_true')
     op.add_option('--use-rsync-xattrs', default=False, action='store_true')
     op.add_option('--sync-xattrs', default=True, action='store_true')
     op.add_option('--sync-acls', default=True, action='store_true')
@@ -241,7 +241,7 @@ def main_i():
     op.add_option('-r', '--remote-gsyncd', metavar='CMD',
                   default=os.path.abspath(sys.argv[0]))
     op.add_option('--volume-id', metavar='UUID')
-    op.add_option('--slave-id', metavar='ID')
+    op.add_option('--subordinate-id', metavar='ID')
     op.add_option('--session-owner', metavar='ID')
     op.add_option('--local-id', metavar='ID', help=SUPPRESS_HELP, default='')
     op.add_option(
@@ -458,9 +458,9 @@ def main_i():
         mods = (lambda x: x, lambda x: x[
                 0].upper() + x[1:], lambda x: 'e' + x[0].upper() + x[1:])
         if remote:
-            rmap = {local: ('local', 'master'), remote: ('remote', 'slave')}
+            rmap = {local: ('local', 'main'), remote: ('remote', 'subordinate')}
         else:
-            rmap = {local: ('local', 'slave')}
+            rmap = {local: ('local', 'subordinate')}
         namedict = {}
         for i in range(len(rscs)):
             x = rscs[i]
@@ -631,10 +631,10 @@ def main_i():
     elif be_agent:
         label = 'agent'
     elif remote:
-        # master
+        # main
         label = gconf.local_path
     else:
-        label = 'slave'
+        label = 'subordinate'
     startup(go_daemon=go_daemon, log_file=log_file, label=label)
     resource.Popen.init_errhandler()
 

@@ -42,7 +42,7 @@ def get_subvol_num(brick_idx, replica_count, disperse_count):
         return cnt
 
 
-def get_slave_bricks_status(host, vol):
+def get_subordinate_bricks_status(host, vol):
     po = Popen(['gluster', '--xml', '--remote-host=' + host,
                 'volume', 'status', vol, "detail"],
                stdout=PIPE, stderr=PIPE)
@@ -152,7 +152,7 @@ class Monitor(object):
         # give a chance to graceful exit
         os.kill(-os.getpid(), signal.SIGTERM)
 
-    def monitor(self, w, argv, cpids, agents, slave_vol, slave_host, master):
+    def monitor(self, w, argv, cpids, agents, subordinate_vol, subordinate_host, main):
         """the monitor loop
 
         Basic logic is a blantantly simple blunt heuristics:
@@ -197,22 +197,22 @@ class Monitor(object):
         conn_timeout = int(gconf.connection_timeout)
         while ret in (0, 1):
             remote_host = w[1]
-            # Check the status of the connected slave node
-            # If the connected slave node is down then try to connect to
+            # Check the status of the connected subordinate node
+            # If the connected subordinate node is down then try to connect to
             # different up node.
             m = re.match("(ssh|gluster|file):\/\/(.+)@([^:]+):(.+)",
                          remote_host)
             if m:
-                current_slave_host = m.group(3)
-                slave_up_hosts = get_slave_bricks_status(
-                    slave_host, slave_vol)
+                current_subordinate_host = m.group(3)
+                subordinate_up_hosts = get_subordinate_bricks_status(
+                    subordinate_host, subordinate_vol)
 
-                if current_slave_host not in slave_up_hosts:
-                    if len(slave_up_hosts) > 0:
+                if current_subordinate_host not in subordinate_up_hosts:
+                    if len(subordinate_up_hosts) > 0:
                         remote_host = "%s://%s@%s:%s" % (m.group(1),
                                                          m.group(2),
                                                          random.choice(
-                                                             slave_up_hosts),
+                                                             subordinate_up_hosts),
                                                          m.group(4))
 
             # Spawn the worker and agent in lock to avoid fd leak
@@ -305,12 +305,12 @@ class Monitor(object):
         self.status[w[0]].set_worker_status(self.ST_INCON)
         return ret
 
-    def multiplex(self, wspx, suuid, slave_vol, slave_host, master):
+    def multiplex(self, wspx, suuid, subordinate_vol, subordinate_host, main):
         argv = sys.argv[:]
         for o in ('-N', '--no-daemon', '--monitor'):
             while o in argv:
                 argv.remove(o)
-        argv.extend(('-N', '-p', '', '--slave-id', suuid))
+        argv.extend(('-N', '-p', '', '--subordinate-id', suuid))
         argv.insert(0, os.path.basename(sys.executable))
 
         cpids = set()
@@ -318,8 +318,8 @@ class Monitor(object):
         ta = []
         for wx in wspx:
             def wmon(w):
-                cpid, _ = self.monitor(w, argv, cpids, agents, slave_vol,
-                                       slave_host, master)
+                cpid, _ = self.monitor(w, argv, cpids, agents, subordinate_vol,
+                                       subordinate_host, main)
                 time.sleep(1)
                 self.lock.acquire()
                 for cpid in cpids:
@@ -336,52 +336,52 @@ class Monitor(object):
 
 
 def distribute(*resources):
-    master, slave = resources
-    mvol = Volinfo(master.volume, master.host)
-    logging.debug('master bricks: ' + repr(mvol.bricks))
+    main, subordinate = resources
+    mvol = Volinfo(main.volume, main.host)
+    logging.debug('main bricks: ' + repr(mvol.bricks))
     prelude = []
-    si = slave
-    slave_host = None
-    slave_vol = None
+    si = subordinate
+    subordinate_host = None
+    subordinate_vol = None
 
-    if isinstance(slave, SSH):
-        prelude = gconf.ssh_command.split() + [slave.remote_addr]
-        si = slave.inner_rsc
-        logging.debug('slave SSH gateway: ' + slave.remote_addr)
+    if isinstance(subordinate, SSH):
+        prelude = gconf.ssh_command.split() + [subordinate.remote_addr]
+        si = subordinate.inner_rsc
+        logging.debug('subordinate SSH gateway: ' + subordinate.remote_addr)
     if isinstance(si, FILE):
         sbricks = {'host': 'localhost', 'dir': si.path}
-        suuid = uuid.uuid5(uuid.NAMESPACE_URL, slave.get_url(canonical=True))
+        suuid = uuid.uuid5(uuid.NAMESPACE_URL, subordinate.get_url(canonical=True))
     elif isinstance(si, GLUSTER):
-        svol = Volinfo(si.volume, slave.remote_addr.split('@')[-1])
+        svol = Volinfo(si.volume, subordinate.remote_addr.split('@')[-1])
         sbricks = svol.bricks
         suuid = svol.uuid
-        slave_host = slave.remote_addr.split('@')[-1]
-        slave_vol = si.volume
+        subordinate_host = subordinate.remote_addr.split('@')[-1]
+        subordinate_vol = si.volume
     else:
-        raise GsyncdError("unknown slave type " + slave.url)
-    logging.info('slave bricks: ' + repr(sbricks))
+        raise GsyncdError("unknown subordinate type " + subordinate.url)
+    logging.info('subordinate bricks: ' + repr(sbricks))
     if isinstance(si, FILE):
-        slaves = [slave.url]
+        subordinates = [subordinate.url]
     else:
-        slavenodes = set(b['host'] for b in sbricks)
-        if isinstance(slave, SSH) and not gconf.isolated_slave:
-            rap = SSH.parse_ssh_address(slave)
-            slaves = ['ssh://' + rap['user'] + '@' + h + ':' + si.url
-                      for h in slavenodes]
+        subordinatenodes = set(b['host'] for b in sbricks)
+        if isinstance(subordinate, SSH) and not gconf.isolated_subordinate:
+            rap = SSH.parse_ssh_address(subordinate)
+            subordinates = ['ssh://' + rap['user'] + '@' + h + ':' + si.url
+                      for h in subordinatenodes]
         else:
-            slavevols = [h + ':' + si.volume for h in slavenodes]
-            if isinstance(slave, SSH):
-                slaves = ['ssh://' + rap.remote_addr + ':' + v
-                          for v in slavevols]
+            subordinatevols = [h + ':' + si.volume for h in subordinatenodes]
+            if isinstance(subordinate, SSH):
+                subordinates = ['ssh://' + rap.remote_addr + ':' + v
+                          for v in subordinatevols]
             else:
-                slaves = slavevols
+                subordinates = subordinatevols
 
-    workerspex = [(brick['dir'], slaves[idx % len(slaves)],
+    workerspex = [(brick['dir'], subordinates[idx % len(subordinates)],
                   get_subvol_num(idx, mvol.replica_count, mvol.disperse_count))
                   for idx, brick in enumerate(mvol.bricks)
                   if is_host_local(brick['host'])]
     logging.info('worker specs: ' + repr(workerspex))
-    return workerspex, suuid, slave_vol, slave_host, master
+    return workerspex, suuid, subordinate_vol, subordinate_host, main
 
 
 def monitor(*resources):

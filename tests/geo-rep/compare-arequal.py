@@ -9,16 +9,16 @@ from multiprocessing import Pool
 import time
 from optparse import OptionParser
 
-slave_dict = {}
-master_res = ''
+subordinate_dict = {}
+main_res = ''
 
 
 def get_arequal_checksum(me, mnt):
-    global slave_dict
-    master_cmd = ['./tests/utils/arequal-checksum', '-p', mnt]
+    global subordinate_dict
+    main_cmd = ['./tests/utils/arequal-checksum', '-p', mnt]
     print "Calculating  "+me+" checksum ..."
     print ""
-    p = subprocess.Popen(master_cmd, stdout=subprocess.PIPE,
+    p = subprocess.Popen(main_cmd, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     ret = p.wait()
     stdout, stderr = p.communicate()
@@ -31,11 +31,11 @@ def get_arequal_checksum(me, mnt):
 
 
 def get_file_count(me, mnt):
-    global slave_dict
-    master_cmd = ['find ' + mnt + ' |wc -l']
+    global subordinate_dict
+    main_cmd = ['find ' + mnt + ' |wc -l']
     print "Calculating  " + me + " files ..."
     print ""
-    p = subprocess.Popen(master_cmd, stdout=subprocess.PIPE,
+    p = subprocess.Popen(main_cmd, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
     ret = p.wait()
     stdout, stderr = p.communicate()
@@ -48,101 +48,101 @@ def get_file_count(me, mnt):
         return stdout.strip()
 
 
-def compare_checksum(master_mnt, slave_dict):
-    proc = len(slave_dict)+1
+def compare_checksum(main_mnt, subordinate_dict):
+    proc = len(subordinate_dict)+1
     pool = Pool(processes=proc)
-    master_res = pool.apply_async(get_arequal_checksum, args=("master",
-                                                              master_mnt))
-    results = [(slave, pool.apply_async(get_arequal_checksum,
-                                        args=(slave_dict[slave]["vol"],
-                                              slave_dict[slave]["mnt"])))
-               for slave in slave_dict]
+    main_res = pool.apply_async(get_arequal_checksum, args=("main",
+                                                              main_mnt))
+    results = [(subordinate, pool.apply_async(get_arequal_checksum,
+                                        args=(subordinate_dict[subordinate]["vol"],
+                                              subordinate_dict[subordinate]["mnt"])))
+               for subordinate in subordinate_dict]
 
     pool.close()
     pool.join()
-    for slave, result in results:
-        slave_dict[slave]["res"] = result.get()
+    for subordinate, result in results:
+        subordinate_dict[subordinate]["res"] = result.get()
         # exception:  OSError
 
-    master_res = master_res.get()
+    main_res = main_res.get()
 
-    print "arequal-checksum of master is : \n %s" % master_res
-    for slave in slave_dict:
-        print "arequal-checksum of geo_rep_slave %s: \n %s" % (
-            slave_dict[slave]["vol"], slave_dict[slave]["res"])
+    print "arequal-checksum of main is : \n %s" % main_res
+    for subordinate in subordinate_dict:
+        print "arequal-checksum of geo_rep_subordinate %s: \n %s" % (
+            subordinate_dict[subordinate]["vol"], subordinate_dict[subordinate]["res"])
 
-    master_files, master_total = re.findall('Total[\s]+:\s(\w+)', master_res)
-    master_reg_meta, master_reg = re.findall('Regular files[\s]+:\s(\w+)',
-                                             master_res)[1:]
-    master_dir_meta, master_dir = re.findall('Directories[\s]+:\s(\w+)',
-                                             master_res)[1:]
+    main_files, main_total = re.findall('Total[\s]+:\s(\w+)', main_res)
+    main_reg_meta, main_reg = re.findall('Regular files[\s]+:\s(\w+)',
+                                             main_res)[1:]
+    main_dir_meta, main_dir = re.findall('Directories[\s]+:\s(\w+)',
+                                             main_res)[1:]
 
     ret = 0
-    for slave in slave_dict:
-        slave_dict[slave]["files"], slave_dict[slave]["total"] = re.findall(
-            'Total[\s]+:\s(\w+)', slave_dict[slave]["res"])
-        slave_dict[slave]["reg_meta"], slave_dict[slave]["reg"] = re.findall(
-            'Regular files[\s]+:\s(\w+)', slave_dict[slave]["res"])[1:]
-        slave_dict[slave]["dir_meta"], slave_dict[slave]["dir"] = re.findall(
-            'Directories[\s]+:\s(\w+)', slave_dict[slave]["res"])[1:]
+    for subordinate in subordinate_dict:
+        subordinate_dict[subordinate]["files"], subordinate_dict[subordinate]["total"] = re.findall(
+            'Total[\s]+:\s(\w+)', subordinate_dict[subordinate]["res"])
+        subordinate_dict[subordinate]["reg_meta"], subordinate_dict[subordinate]["reg"] = re.findall(
+            'Regular files[\s]+:\s(\w+)', subordinate_dict[subordinate]["res"])[1:]
+        subordinate_dict[subordinate]["dir_meta"], subordinate_dict[subordinate]["dir"] = re.findall(
+            'Directories[\s]+:\s(\w+)', subordinate_dict[subordinate]["res"])[1:]
 
-        if master_reg_meta != slave_dict[slave]["reg_meta"]:
+        if main_reg_meta != subordinate_dict[subordinate]["reg_meta"]:
             print ("Meta data checksum for regular files doesn't match " +
-                   "between master and  "+slave_dict[slave]["vol"])
+                   "between main and  "+subordinate_dict[subordinate]["vol"])
             ret = 67
 
-        if master_dir_meta != slave_dict[slave]["dir_meta"]:
+        if main_dir_meta != subordinate_dict[subordinate]["dir_meta"]:
             print ("Meta data checksum for directories doesn't match " +
-                   "between master and "+slave_dict[slave]["vol"])
+                   "between main and "+subordinate_dict[subordinate]["vol"])
             ret = 68
 
-        if master_files != slave_dict[slave]["files"]:
-            print ("Failed to sync all the files from master to " +
-                   slave_dict[slave]["vol"])
+        if main_files != subordinate_dict[subordinate]["files"]:
+            print ("Failed to sync all the files from main to " +
+                   subordinate_dict[subordinate]["vol"])
             ret = 1
 
-        if master_total != slave_dict[slave]["total"]:
-            if master_reg != slave_dict[slave]["reg"]:
+        if main_total != subordinate_dict[subordinate]["total"]:
+            if main_reg != subordinate_dict[subordinate]["reg"]:
                 print ("Checksum for regular files doesn't match " +
-                       "between master and "+slave_dict[slave]["vol"])
+                       "between main and "+subordinate_dict[subordinate]["vol"])
                 ret = 1
-            elif master_dir != slave_dict[slave]["dir"]:
+            elif main_dir != subordinate_dict[subordinate]["dir"]:
                 print ("Checksum for directories doesn't match between " +
-                       "master and "+slave_dict[slave]["vol"])
+                       "main and "+subordinate_dict[subordinate]["vol"])
                 ret = 1
             else:
                 print ("Checksum for symlinks or others doesn't match " +
-                       "between master and "+slave_dict[slave]["vol"])
+                       "between main and "+subordinate_dict[subordinate]["vol"])
                 ret = 1
 
         if ret is 0:
-            print ("Successfully synced all the files from master " +
-                   "to the "+slave_dict[slave]["vol"])
+            print ("Successfully synced all the files from main " +
+                   "to the "+subordinate_dict[subordinate]["vol"])
 
     return ret
 
 
-def compare_filecount(master_mnt, slave_dict):
-    proc = len(slave_dict)+1
+def compare_filecount(main_mnt, subordinate_dict):
+    proc = len(subordinate_dict)+1
     pool = Pool(processes=proc)
 
-    master_res = pool.apply_async(get_file_count, args=("master", master_mnt))
-    results = [(slave, pool.apply_async(get_file_count,
-                                        args=(slave_dict[slave]["vol"],
-                                              slave_dict[slave]["mnt"])))
-               for slave in slave_dict]
+    main_res = pool.apply_async(get_file_count, args=("main", main_mnt))
+    results = [(subordinate, pool.apply_async(get_file_count,
+                                        args=(subordinate_dict[subordinate]["vol"],
+                                              subordinate_dict[subordinate]["mnt"])))
+               for subordinate in subordinate_dict]
 
     pool.close()
     pool.join()
-    for slave, result in results:
-        slave_dict[slave]["res"] = result.get()
+    for subordinate, result in results:
+        subordinate_dict[subordinate]["res"] = result.get()
 
-    master_res = master_res.get()
+    main_res = main_res.get()
     ret = 0
-    for slave in slave_dict:
-        if not master_res == slave_dict[slave]["res"]:
-            print ("files count between master and " +
-                   slave_dict[slave]["vol"]+" doesn't match yet")
+    for subordinate in subordinate_dict:
+        if not main_res == subordinate_dict[subordinate]["res"]:
+            print ("files count between main and " +
+                   subordinate_dict[subordinate]["vol"]+" doesn't match yet")
             ret = 1
 
     return ret
@@ -159,85 +159,85 @@ def parse_url(url):
     return node, vol
 
 
-def cleanup(master_mnt, slave_dict):
+def cleanup(main_mnt, subordinate_dict):
     try:
-        os.system("umount %s" % (master_mnt))
+        os.system("umount %s" % (main_mnt))
     except:
-        print("Failed to unmount the master volume")
+        print("Failed to unmount the main volume")
 
-    for slave in slave_dict:
+    for subordinate in subordinate_dict:
 
         try:
-            os.system("umount %s" % (slave_dict[slave]["mnt"]))
-            os.removedirs(slave_dict[slave]["mnt"])
+            os.system("umount %s" % (subordinate_dict[subordinate]["mnt"]))
+            os.removedirs(subordinate_dict[subordinate]["mnt"])
         except:
-            print("Failed to unmount the "+slave+" volume")
+            print("Failed to unmount the "+subordinate+" volume")
 
-    os.removedirs(master_mnt)
+    os.removedirs(main_mnt)
 
 
 def main():
 
-    slaves = args[1:]
+    subordinates = args[1:]
 
-    masterurl = args[0]
-    master_node, mastervol = parse_url(masterurl)
-    master_mnt = tempfile.mkdtemp()
+    mainurl = args[0]
+    main_node, mainvol = parse_url(mainurl)
+    main_mnt = tempfile.mkdtemp()
 
     i = 1
-    for slave in slaves:
-        slave_dict["slave"+str(i)] = {}
-        slave_dict["slave"+str(i)]["node"], slave_dict[
-            "slave"+str(i)]["vol"] = parse_url(slave)
-        slave_dict["slave"+str(i)]["mnt"] = tempfile.mkdtemp()
+    for subordinate in subordinates:
+        subordinate_dict["subordinate"+str(i)] = {}
+        subordinate_dict["subordinate"+str(i)]["node"], subordinate_dict[
+            "subordinate"+str(i)]["vol"] = parse_url(subordinate)
+        subordinate_dict["subordinate"+str(i)]["mnt"] = tempfile.mkdtemp()
         i += 1
 
     try:
-        print ("mounting the master volume on "+master_mnt)
-        os.system("glusterfs -s  %s --volfile-id %s %s" % (master_node,
-                                                           mastervol,
-                                                           master_mnt))
+        print ("mounting the main volume on "+main_mnt)
+        os.system("glusterfs -s  %s --volfile-id %s %s" % (main_node,
+                                                           mainvol,
+                                                           main_mnt))
         time.sleep(3)
     except:
-        print("Failed to mount the master volume")
+        print("Failed to mount the main volume")
 
-    for slave in slave_dict:
-        print slave
-        print slave_dict[slave]
+    for subordinate in subordinate_dict:
+        print subordinate
+        print subordinate_dict[subordinate]
         try:
-            print ("mounting the slave volume on "+slave_dict[slave]['mnt'])
+            print ("mounting the subordinate volume on "+subordinate_dict[subordinate]['mnt'])
             os.system("glusterfs -s %s --volfile-id %s %s" % (
-                slave_dict[slave]["node"], slave_dict[slave]["vol"],
-                slave_dict[slave]["mnt"]))
+                subordinate_dict[subordinate]["node"], subordinate_dict[subordinate]["vol"],
+                subordinate_dict[subordinate]["mnt"]))
             time.sleep(3)
         except:
-            print("Failed to mount the "+slave+" volume")
+            print("Failed to mount the "+subordinate+" volume")
 
     res = 0
     if option.check == "arequal":
-        res = compare_checksum(master_mnt, slave_dict)
+        res = compare_checksum(main_mnt, subordinate_dict)
     elif option.check == "find":
-        res = compare_filecount(master_mnt, slave_dict)
+        res = compare_filecount(main_mnt, subordinate_dict)
     else:
         print "wrong options given"
 
-    cleanup(master_mnt, slave_dict)
+    cleanup(main_mnt, subordinate_dict)
 
     sys.exit(res)
 
 
 if __name__ == '__main__':
 
-    usage = "usage: %prog [option] <master-host>::<master-vol> \
-    <slave1-host>::<slave1-vol> . . ."
+    usage = "usage: %prog [option] <main-host>::<main-vol> \
+    <subordinate1-host>::<subordinate1-vol> . . ."
     parser = OptionParser(usage=usage)
     parser.add_option("-c", dest="check", action="store", type="string",
                       default="arequal",
                       help="size of the files to be used [default: %default]")
     (option, args) = parser.parse_args()
     if not args:
-        print "usage: <script> [option] <master-host>::<master-vol>\
-         <slave1-host>::<slave1-vol> . . ."
+        print "usage: <script> [option] <main-host>::<main-vol>\
+         <subordinate1-host>::<subordinate1-vol> . . ."
         print ""
         sys.exit(1)
 

@@ -20,76 +20,76 @@ def parse_url(url):
     return node, vol
 
 
-def cleanup(master_mnt, slave_mnt):
+def cleanup(main_mnt, subordinate_mnt):
     try:
-        os.system("umount %s" % (master_mnt))
+        os.system("umount %s" % (main_mnt))
     except:
-        print("Failed to unmount the master volume")
+        print("Failed to unmount the main volume")
     try:
-        os.system("umount %s" % (slave_mnt))
+        os.system("umount %s" % (subordinate_mnt))
     except:
-        print("Failed to unmount the slave volume")
+        print("Failed to unmount the subordinate volume")
 
-    os.removedirs(master_mnt)
-    os.removedirs(slave_mnt)
+    os.removedirs(main_mnt)
+    os.removedirs(subordinate_mnt)
 
 
 def main():
 
-    masterurl = sys.argv[1]
-    slaveurl = sys.argv[2]
-    slave_node, slavevol = parse_url(slaveurl)
-    master_node, mastervol = parse_url(masterurl)
+    mainurl = sys.argv[1]
+    subordinateurl = sys.argv[2]
+    subordinate_node, subordinatevol = parse_url(subordinateurl)
+    main_node, mainvol = parse_url(mainurl)
 
-    master_mnt = tempfile.mkdtemp()
-    slave_mnt = tempfile.mkdtemp()
+    main_mnt = tempfile.mkdtemp()
+    subordinate_mnt = tempfile.mkdtemp()
 
     try:
-        print "Mounting master volume on a temp mnt_pnt"
-        os.system("glusterfs -s %s --volfile-id %s %s" % (master_node,
-                                                          mastervol,
-                                                          master_mnt))
+        print "Mounting main volume on a temp mnt_pnt"
+        os.system("glusterfs -s %s --volfile-id %s %s" % (main_node,
+                                                          mainvol,
+                                                          main_mnt))
     except:
-        print("Failed to mount the master volume")
-        cleanup(master_mnt, slave_mnt)
+        print("Failed to mount the main volume")
+        cleanup(main_mnt, subordinate_mnt)
         sys.exit(1)
 
     try:
-        print "Mounting slave voluem on a temp mnt_pnt"
-        os.system("glusterfs -s %s --volfile-id %s %s" % (slave_node, slavevol,
-                                                          slave_mnt))
+        print "Mounting subordinate voluem on a temp mnt_pnt"
+        os.system("glusterfs -s %s --volfile-id %s %s" % (subordinate_node, subordinatevol,
+                                                          subordinate_mnt))
     except:
-        print("Failed to mount the master volume")
-        cleanup(master_mnt, slave_mnt)
+        print("Failed to mount the main volume")
+        cleanup(main_mnt, subordinate_mnt)
         sys.exit(1)
 
-    slave_file_list = [slave_mnt]
-    for top, dirs, files in os.walk(slave_mnt, topdown=False):
+    subordinate_file_list = [subordinate_mnt]
+    for top, dirs, files in os.walk(subordinate_mnt, topdown=False):
         for subdir in dirs:
-            slave_file_list.append(os.path.join(top, subdir))
+            subordinate_file_list.append(os.path.join(top, subdir))
         for file in files:
-            slave_file_list.append(os.path.join(top, file))
+            subordinate_file_list.append(os.path.join(top, file))
 
     # chdir and then get the gfid, so that you don't need to replace
     gfid_attr = 'glusterfs.gfid'
     ret = 0
-    for sfile in slave_file_list:
-        mfile = sfile.replace(slave_mnt, master_mnt)
+    for sfile in subordinate_file_list:
+        mfile = sfile.replace(subordinate_mnt, main_mnt)
         if xattr.getxattr(sfile, gfid_attr, True) != xattr.getxattr(
                 mfile, gfid_attr, True):
-            print ("gfid of file %s in slave is different from %s" +
-                   " in master" % (sfile, mfile))
+            print ("gfid of file %s in subordinate is different from %s" +
+                   " in main" % (sfile, mfile))
             ret = 1
 
-    cleanup(master_mnt, slave_mnt)
+    cleanup(main_mnt, subordinate_mnt)
 
     sys.exit(ret)
 
 
 if __name__ == '__main__':
     if len(sys.argv[1:]) < 2:
-        print ("Please pass master volume name and slave url as arguments")
-        print ("USAGE : python <script> <master-host>::<master-vol> " +
-               "<slave-host>::<slave-vol>")
+        print ("Please pass main volume name and subordinate url as arguments")
+        print ("USAGE : python <script> <main-host>::<main-vol> " +
+               "<subordinate-host>::<subordinate-vol>")
         sys.exit(1)
     main()

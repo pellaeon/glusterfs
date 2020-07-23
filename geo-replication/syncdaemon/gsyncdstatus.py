@@ -48,7 +48,7 @@ def human_time_utc(ts):
 
 def get_default_values():
     return {
-        "slave_node": DEFAULT_STATUS,
+        "subordinate_node": DEFAULT_STATUS,
         "worker_status": DEFAULT_STATUS,
         "last_synced": 0,
         "crawl_status": DEFAULT_STATUS,
@@ -150,7 +150,7 @@ class GeorepStatus(object):
 
     def reset_on_worker_start(self):
         def merger(data):
-            data["slave_node"] = DEFAULT_STATUS
+            data["subordinate_node"] = DEFAULT_STATUS
             data["crawl_status"] = DEFAULT_STATUS
             data["entry"] = 0
             data["data"] = 0
@@ -195,9 +195,9 @@ class GeorepStatus(object):
     def set_worker_crawl_status(self, status):
         self.set_field("crawl_status", status)
 
-    def set_slave_node(self, slave_node):
+    def set_subordinate_node(self, subordinate_node):
         def merger(data):
-            data["slave_node"] = slave_node
+            data["subordinate_node"] = subordinate_node
             return json.dumps(data)
 
         self._update(merger)
@@ -234,7 +234,7 @@ class GeorepStatus(object):
         """
         Monitor Status --->        Created    Started  Paused      Stopped
         ----------------------------------------------------------------------
-        slave_node                 N/A        VALUE    VALUE       N/A
+        subordinate_node                 N/A        VALUE    VALUE       N/A
         status                     Created    VALUE    Paused      Stopped
         last_synced                N/A        VALUE    VALUE       VALUE
         crawl_status               N/A        VALUE    N/A         N/A
@@ -308,7 +308,7 @@ class GeorepStatus(object):
             data["checkpoint_completion_time_utc"] = DEFAULT_STATUS
 
         if data["worker_status"] not in ["Active", "Passive"]:
-            data["slave_node"] = DEFAULT_STATUS
+            data["subordinate_node"] = DEFAULT_STATUS
 
         if data.get("last_synced_utc", 0) == 0:
             data["last_synced_utc"] = DEFAULT_STATUS

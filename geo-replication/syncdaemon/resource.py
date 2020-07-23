@@ -31,7 +31,7 @@ import shutil
 from gconf import gconf
 import repce
 from repce import RepceServer, RepceClient
-from master import gmaster_builder
+from main import gmain_builder
 import syncdutils
 from syncdutils import GsyncdError, select, privileged, boolify, funcode
 from syncdutils import umask, entry2pb, gauxpfx, errno_wrap, lstat
@@ -550,7 +550,7 @@ class Server(object):
         the difference b/w this and set_xtime() being
         set_xtime() being overloaded to set the xtime
         on the brick (this method sets xtime on the
-        remote slave)
+        remote subordinate)
         """
         Xattr.lsetxattr(
             path, '.'.join([cls.GX_NSPACE, uuid, 'xtime']),
@@ -609,8 +609,8 @@ class Server(object):
                         return er
 
         def collect_failure(e, cmd_ret):
-            # We do this for failing fops on Slave
-            # Master should be logging this
+            # We do this for failing fops on Subordinate
+            # Main should be logging this
             if cmd_ret is None:
                 return
 
@@ -746,8 +746,8 @@ class Server(object):
             cmd_ret = errno_wrap(os.chmod, [go, mode],
                                  [ENOENT], [ESTALE, EINVAL])
             # This is a fail fast mechanism
-            # We do this for failing fops on Slave
-            # Master should be logging this
+            # We do this for failing fops on Subordinate
+            # Main should be logging this
             if isinstance(cmd_ret, int):
                 failures.append((e, cmd_ret))
                 continue
@@ -810,9 +810,9 @@ class Server(object):
         return 1.0
 
 
-class SlaveLocal(object):
+class SubordinateLocal(object):
 
-    """mix-in class to implement some factes of a slave server
+    """mix-in class to implement some factes of a subordinate server
 
     ("mix-in" is sort of like "abstract class", ie. it's not
     instantiated just included in the ancesty DAG. I use "mix-in"
@@ -841,7 +841,7 @@ class SlaveLocal(object):
         t = syncdutils.Thread(target=lambda: (repce.service_loop(),
                                               syncdutils.finalize()))
         t.start()
-        logging.info("slave listening")
+        logging.info("subordinate listening")
         if gconf.timeout and int(gconf.timeout) > 0:
             while True:
                 lp = self.server.last_keep_alive
@@ -855,18 +855,18 @@ class SlaveLocal(object):
             select((), (), ())
 
 
-class SlaveRemote(object):
+class SubordinateRemote(object):
 
-    """mix-in class to implement an interface to a remote slave"""
+    """mix-in class to implement an interface to a remote subordinate"""
 
     def connect_remote(self, rargs=[], **opts):
-        """connects to a remote slave
+        """connects to a remote subordinate
 
-        Invoke an auxiliary utility (slave gsyncd, possibly wrapped)
+        Invoke an auxiliary utility (subordinate gsyncd, possibly wrapped)
         which sets up the connection and set up a RePCe client to
         communicate throuh its stdio.
         """
-        slave = opts.get('slave', self.url)
+        subordinate = opts.get('subordinate', self.url)
         extra_opts = []
         so = getattr(gconf, 'session_owner', None)
         if so:
@@ -875,7 +875,7 @@ class SlaveRemote(object):
             extra_opts.append('--use-rsync-xattrs')
         po = Popen(rargs + gconf.remote_gsyncd.split() + extra_opts +
                    ['-N', '--listen', '--timeout', str(gconf.timeout),
-                    slave],
+                    subordinate],
                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE)
         gconf.transport = po
@@ -948,7 +948,7 @@ class SlaveRemote(object):
 
         return po
 
-    def tarssh(self, files, slaveurl):
+    def tarssh(self, files, subordinateurl):
         """invoke tar+ssh
         -z (compress) can be use if needed, but omitting it now
         as it results in weird error (tar+ssh errors out (errcode: 2)
@@ -956,7 +956,7 @@ class SlaveRemote(object):
         if not files:
             raise GsyncdError("no files to sync")
         logging.debug("files: " + ", ".join(files))
-        (host, rdir) = slaveurl.split(':')
+        (host, rdir) = subordinateurl.split(':')
         tar_cmd = ["tar"] + \
             ["-cf", "-", "--files-from", "-"]
         ssh_cmd = gconf.ssh_command_tar.split() + \
@@ -1015,13 +1015,13 @@ class AbstractUrl(object):
         return self.get_url()
 
 
-class FILE(AbstractUrl, SlaveLocal, SlaveRemote):
+class FILE(AbstractUrl, SubordinateLocal, SubordinateRemote):
 
     """scheme class for file:// urls
 
-    can be used to represent a file slave server
-    on slave side, or interface to a remote file
-    file server on master side
+    can be used to represent a file subordinate server
+    on subordinate side, or interface to a remote file
+    file server on main side
     """
 
     class FILEServer(Server):
@@ -1042,15 +1042,15 @@ class FILE(AbstractUrl, SlaveLocal, SlaveRemote):
         return sup(self, files, self.path)
 
 
-class GLUSTER(AbstractUrl, SlaveLocal, SlaveRemote):
+class GLUSTER(AbstractUrl, SubordinateLocal, SubordinateRemote):
 
     """scheme class for gluster:// urls
 
-    can be used to represent a gluster slave server
-    on slave side, or interface to a remote gluster
-    slave on master side, or to represent master
-    (slave-ish features come from the mixins, master
-    functionality is outsourced to GMaster from master)
+    can be used to represent a gluster subordinate server
+    on subordinate side, or interface to a remote gluster
+    subordinate on main side, or to represent main
+    (subordinate-ish features come from the mixins, main
+    functionality is outsourced to GMain from main)
     """
 
     class GLUSTERServer(Server):
@@ -1306,25 +1306,25 @@ class GLUSTER(AbstractUrl, SlaveLocal, SlaveRemote):
 
     def connect_remote(self, *a, **kw):
         sup(self, *a, **kw)
-        self.slavedir = "/proc/%d/cwd" % self.server.pid()
+        self.subordinatedir = "/proc/%d/cwd" % self.server.pid()
 
-    def gmaster_instantiate_tuple(self, slave):
+    def gmain_instantiate_tuple(self, subordinate):
         """return a tuple of the 'one shot' and the 'main crawl'
         class instance"""
-        return (gmaster_builder('xsync')(self, slave),
-                gmaster_builder()(self, slave),
-                gmaster_builder('changeloghistory')(self, slave))
+        return (gmain_builder('xsync')(self, subordinate),
+                gmain_builder()(self, subordinate),
+                gmain_builder('changeloghistory')(self, subordinate))
 
     def service_loop(self, *args):
         """enter service loop
 
-        - if slave given, instantiate GMaster and
+        - if subordinate given, instantiate GMain and
           pass control to that instance, which implements
-          master behavior
+          main behavior
         - else do that's what's inherited
         """
         if args:
-            slave = args[0]
+            subordinate = args[0]
             if gconf.local_path:
                 class brickserver(FILE.FILEServer):
                     local_path = gconf.local_path
@@ -1355,38 +1355,38 @@ class GLUSTER(AbstractUrl, SlaveLocal, SlaveRemote):
                     @classmethod
                     def linkto_check(cls, e):
                         return super(brickserver, cls).linkto_check(e)
-                if gconf.slave_id:
-                    # define {,set_}xtime in slave, thus preempting
+                if gconf.subordinate_id:
+                    # define {,set_}xtime in subordinate, thus preempting
                     # the call to remote, so that it takes data from
                     # the local brick
-                    slave.server.xtime = types.MethodType(
+                    subordinate.server.xtime = types.MethodType(
                         lambda _self, path, uuid: (
                             brickserver.xtime(path,
-                                              uuid + '.' + gconf.slave_id)
+                                              uuid + '.' + gconf.subordinate_id)
                         ),
-                        slave.server)
-                    slave.server.stime = types.MethodType(
+                        subordinate.server)
+                    subordinate.server.stime = types.MethodType(
                         lambda _self, path, uuid: (
                             brickserver.stime(path,
-                                              uuid + '.' + gconf.slave_id)
+                                              uuid + '.' + gconf.subordinate_id)
                         ),
-                        slave.server)
-                    slave.server.set_stime = types.MethodType(
+                        subordinate.server)
+                    subordinate.server.set_stime = types.MethodType(
                         lambda _self, path, uuid, mark: (
                             brickserver.set_stime(path,
-                                                  uuid + '.' + gconf.slave_id,
+                                                  uuid + '.' + gconf.subordinate_id,
                                                   mark)
                         ),
-                        slave.server)
-                (g1, g2, g3) = self.gmaster_instantiate_tuple(slave)
-                g1.master.server = brickserver
-                g2.master.server = brickserver
-                g3.master.server = brickserver
+                        subordinate.server)
+                (g1, g2, g3) = self.gmain_instantiate_tuple(subordinate)
+                g1.main.server = brickserver
+                g2.main.server = brickserver
+                g3.main.server = brickserver
             else:
-                (g1, g2, g3) = self.gmaster_instantiate_tuple(slave)
-                g1.master.server.aggregated = gmaster.master.server
-                g2.master.server.aggregated = gmaster.master.server
-                g3.master.server.aggregated = gmaster.master.server
+                (g1, g2, g3) = self.gmain_instantiate_tuple(subordinate)
+                g1.main.server.aggregated = gmain.main.server
+                g2.main.server.aggregated = gmain.main.server
+                g3.main.server.aggregated = gmain.main.server
             # bad bad bad: bad way to do things like this
             # need to make this elegant
             # register the crawlers and start crawling
@@ -1456,17 +1456,17 @@ class GLUSTER(AbstractUrl, SlaveLocal, SlaveRemote):
             sup(self, *args)
 
     def rsync(self, files):
-        return sup(self, files, self.slavedir)
+        return sup(self, files, self.subordinatedir)
 
     def tarssh(self, files):
-        return sup(self, files, self.slavedir)
+        return sup(self, files, self.subordinatedir)
 
 
-class SSH(AbstractUrl, SlaveRemote):
+class SSH(AbstractUrl, SubordinateRemote):
 
     """scheme class for ssh:// urls
 
-    interface to remote slave on master side
+    interface to remote subordinate on main side
     implementing an ssh based proxy
     """
 
@@ -1509,15 +1509,15 @@ class SSH(AbstractUrl, SlaveRemote):
         sup(self, *a)
         ityp = type(self.inner_rsc)
         if ityp == FILE:
-            slavepath = self.inner_rsc.path
+            subordinatepath = self.inner_rsc.path
         elif ityp == GLUSTER:
-            slavepath = "/proc/%d/cwd" % self.server.pid()
+            subordinatepath = "/proc/%d/cwd" % self.server.pid()
         else:
             raise NotImplementedError
-        self.slaveurl = ':'.join([self.remote_addr, slavepath])
+        self.subordinateurl = ':'.join([self.remote_addr, subordinatepath])
 
     def connect_remote(self, go_daemon=None):
-        """connect to inner slave url through outer ssh url
+        """connect to inner subordinate url through outer ssh url
 
         Wrap the connecting utility in ssh.
 
@@ -1544,7 +1544,7 @@ class SSH(AbstractUrl, SlaveRemote):
         deferred = go_daemon == 'postconn'
         ret = sup(self, gconf.ssh_command.split() + gconf.ssh_ctl_args +
                   [self.remote_addr],
-                  slave=self.inner_rsc.url, deferred=deferred)
+                  subordinate=self.inner_rsc.url, deferred=deferred)
 
         if deferred:
             # send a message to peer so that we can wait for
@@ -1568,7 +1568,7 @@ class SSH(AbstractUrl, SlaveRemote):
     def rsync(self, files):
         return sup(self, files, '-e',
                    " ".join(gconf.ssh_command.split() + gconf.ssh_ctl_args),
-                   *(gconf.rsync_ssh_options.split() + [self.slaveurl]))
+                   *(gconf.rsync_ssh_options.split() + [self.subordinateurl]))
 
     def tarssh(self, files):
-        return sup(self, files, self.slaveurl)
+        return sup(self, files, self.subordinateurl)
